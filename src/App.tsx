@@ -1,6 +1,12 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AuthProvider } from './auth/AuthProvider'
 import { GuestOnly, RequireRole } from './auth/RequireAuth'
+import { CartProvider } from './cart/CartProvider'
+import { CheckoutPage } from './pages/customer/CheckoutPage'
+import { MyOrderDetailPage } from './pages/customer/MyOrderDetailPage'
+import { MyOrdersPage } from './pages/customer/MyOrdersPage'
+import { RestaurantPage } from './pages/customer/RestaurantPage'
+import { RestaurantsPage } from './pages/customer/RestaurantsPage'
 import { CustomerLayout } from './layouts/CustomerLayout'
 import { SellerLayout } from './layouts/SellerLayout'
 import { LoginPage } from './pages/auth/LoginPage'
@@ -23,9 +29,18 @@ export default function App() {
             </Route>
 
             <Route element={<RequireRole role="CUSTOMER" />}>
-              <Route element={<CustomerLayout />}>
-                <Route path="/" element={<Soon title="Restaurantes" />} />
-                <Route path="/meus-pedidos" element={<Soon title="Meus pedidos" />} />
+              <Route
+                element={
+                  <CartProvider>
+                    <CustomerLayout />
+                  </CartProvider>
+                }
+              >
+                <Route path="/" element={<RestaurantsPage />} />
+                <Route path="/restaurantes/:id" element={<RestaurantPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/meus-pedidos" element={<MyOrdersPage />} />
+                <Route path="/meus-pedidos/:id" element={<MyOrderDetailPage />} />
               </Route>
             </Route>
 
