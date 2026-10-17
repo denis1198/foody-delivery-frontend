@@ -7,6 +7,8 @@ import { MyOrderDetailPage } from './pages/customer/MyOrderDetailPage'
 import { MyOrdersPage } from './pages/customer/MyOrdersPage'
 import { RestaurantPage } from './pages/customer/RestaurantPage'
 import { RestaurantsPage } from './pages/customer/RestaurantsPage'
+import { MenuPage } from './pages/seller/MenuPage'
+import { SellerOrdersPage } from './pages/seller/SellerOrdersPage'
 import { CustomerLayout } from './layouts/CustomerLayout'
 import { SellerLayout } from './layouts/SellerLayout'
 import { LoginPage } from './pages/auth/LoginPage'
@@ -47,8 +49,8 @@ export default function App() {
             <Route path="/painel" element={<RequireRole role="SELLER" />}>
               <Route element={<SellerLayout />}>
                 <Route index element={<Soon title="Dashboard" />} />
-                <Route path="pedidos" element={<Soon title="Pedidos" />} />
-                <Route path="cardapio" element={<Soon title="Cardápio" />} />
+                <Route path="pedidos" element={<SellerOrdersPage />} />
+                <Route path="cardapio" element={<MenuPage />} />
                 <Route path="configuracoes" element={<Soon title="Configurações" />} />
               </Route>
             </Route>
