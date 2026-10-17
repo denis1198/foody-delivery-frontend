@@ -1,51 +1,68 @@
 # Foody Delivery — Front-end
 
-Aplicação React para gestão de pedidos de delivery: login e cadastro, listagem de pedidos com o status
-atual, criação de pedidos e atualização de status.
+Aplicação React de um marketplace de delivery estilo iFood, com uma área para **clientes** e um **painel para
+restaurantes**.
 
 > Backend (API Java + Spring Boot): https://github.com/denis1198/foody-delivery-backend
 
-**Stack:** React 19, TypeScript, Vite, React Router. Estilos em CSS próprio, sem biblioteca de UI.
+**Stack:** React 19, TypeScript, Vite, React Router, Tailwind CSS v4, Recharts e lucide-react.
 
 ## Como rodar
 
-Pré-requisitos: **Node.js 20+** e a [API](https://github.com/denis1198/foody-delivery-backend) rodando
-em http://localhost:8080.
+Pré-requisitos: **Node.js 20+** e a [API](https://github.com/denis1198/foody-delivery-backend) em
+http://localhost:8080.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Acesse http://localhost:5173 e crie uma conta em **Cadastre-se**.
-
-Se a API estiver em outro endereço, copie `.env.example` para `.env` e ajuste `VITE_API_URL`.
+Acesse http://localhost:5173 e use os atalhos **Cliente** ou **Restaurante** da tela de login
+(`cliente@foody.com` / `vendedor@foody.com`, senha `demo123`).
+Para outra URL da API, copie `.env.example` para `.env` e ajuste `VITE_API_URL`.
 
 | Script | Descrição |
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
-| `npm run build` | Checagem de tipos e build de produção em `dist/` |
-| `npm run lint` | Lint com oxlint |
+| `npm run build` | Checagem de tipos e build de produção |
+| `npm run lint` | oxlint |
 
-## Funcionalidades
+## Área do cliente
 
-- Cadastro e login. O token JWT fica no `localStorage`, e a sessão é restaurada ao recarregar a página.
-- Rotas protegidas: sem login, o usuário é levado para `/login` e, depois de entrar, volta para a página
-  que tentou abrir.
-- Lista de pedidos com o status atual, filtro por status com contadores, busca por ID e atualização
-  automática a cada 15 segundos.
-- Avanço e cancelamento de status. Só aparecem os botões das transições que a API informa em `nextStatuses`.
-- Novo pedido com cliente, endereço e itens dinâmicos. O total é calculado enquanto se digita, e os erros
-  de validação da API aparecem em cada campo.
-- Página de detalhe do pedido (`/pedidos/:id`).
-- Layout responsivo.
+- **Vitrine**: busca, categorias e restaurantes fechados sinalizados.
+- **Cardápio** por categoria, com modal de item (quantidade e observação).
+- **Carrinho** de um restaurante por vez, salvo no navegador; painel lateral no desktop e barra fixa no celular.
+- **Checkout** com endereço (lembra o último), Pix, cartão ou dinheiro.
+- **Meus pedidos** e acompanhamento com linha do tempo atualizada a cada 10s; cancelamento enquanto o
+  restaurante não aceitou.
+
+## Painel do restaurante (`/painel`)
+
+O vendedor é redirecionado para cá ao entrar. Layout com sidebar recolhível (tab bar no celular) e botão para
+abrir/fechar a loja.
+
+- **Dashboard**, no padrão do Marketplace Manager: filtro de período; cards de faturamento, líquido, lucro bruto,
+  margem, vendas, itens, ticket médio e cancelamentos com variação contra o período anterior e popover
+  "Como calculamos"; resumo de receitas (com visão em tabela), picos de movimentação por hora, desempenho por dia
+  da semana, dias mais fracos com leitura automática, top 15 produtos com lucro/margem e pedidos por status.
+- **Pedidos**: quadro por status atualizado a cada 10s, com destaque para pedidos novos e alerta de espera.
+- **Cardápio**: categorias e produtos, disponibilidade em um clique e **simulação de margem ao vivo**
+  (comissão, taxa de pagamento, imposto e custo) com alerta de margem baixa.
+- **Configurações**: perfil, entrega e percentuais usados nas métricas.
+
+Tema claro/escuro em todas as telas. A paleta dos gráficos foi validada para daltonismo nos dois temas, e a
+dashboard é carregada sob demanda (clientes não baixam o Recharts).
 
 ## Estrutura
 
 ```
 src/
-├── api/        # cliente HTTP, tipos e chamadas da API
-├── auth/       # contexto de autenticação e rotas protegidas
-├── components/ # layout, badge e ações de status
-└── pages/      # login, cadastro, lista, novo pedido e detalhe
+├── api/          # cliente HTTP, tipos e chamadas (cliente e vendedor)
+├── auth/         # sessão, rotas protegidas por papel
+├── cart/         # carrinho
+├── components/   # UI compartilhada e componentes da dashboard
+├── layouts/      # layout do cliente e do painel
+├── pages/        # auth/, customer/, seller/
+├── theme/        # tema claro/escuro
+└── utils/        # períodos e cálculo de margem
 ```
