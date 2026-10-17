@@ -1,13 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { AuthCard } from '../components/AuthCard'
 
 export function LoginPage() {
   const { login } = useAuth()
-  const navigate = useNavigate()
-  const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -19,7 +17,6 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login(email, password)
-      navigate(from, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erro inesperado.')
     } finally {

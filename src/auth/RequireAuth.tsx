@@ -10,8 +10,10 @@ export function RequireAuth() {
   return <Outlet />
 }
 
+/** Telas de login/cadastro: ao autenticar, volta para a página que o usuário tentou abrir. */
 export function GuestOnly() {
   const { user, loading } = useAuth()
+  const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
   if (loading) return null
-  return user ? <Navigate to="/" replace /> : <Outlet />
+  return user ? <Navigate to={from} replace /> : <Outlet />
 }

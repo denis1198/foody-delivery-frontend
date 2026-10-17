@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { ApiError } from '../api/client'
 import { ordersApi } from '../api/orders'
 import { ORDER_STATUSES, type Order, type OrderStatus } from '../api/types'
@@ -15,6 +15,8 @@ export function OrdersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [searchId, setSearchId] = useState('')
+  const navigate = useNavigate()
 
   // Carrega ao abrir e atualiza periodicamente para refletir mudanças de outros usuários.
   useEffect(() => {
@@ -49,6 +51,23 @@ export function OrdersPage() {
       <div className="page-header">
         <h1>Pedidos</h1>
         <div className="toolbar">
+          <form
+            className="search"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (searchId) navigate(`/pedidos/${searchId}`)
+            }}
+          >
+            <input
+              type="number"
+              min={1}
+              placeholder="Buscar por ID"
+              aria-label="Buscar pedido por ID"
+              value={searchId}
+              onChange={(e) => setSearchId(e.target.value)}
+            />
+            <button className="btn btn-ghost">Buscar</button>
+          </form>
           <button className="btn btn-ghost" onClick={() => setRefreshKey((k) => k + 1)}>
             Atualizar
           </button>

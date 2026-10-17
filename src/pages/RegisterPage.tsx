@@ -1,12 +1,11 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { AuthCard } from '../components/AuthCard'
 
 export function RegisterPage() {
   const { register } = useAuth()
-  const navigate = useNavigate()
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -22,7 +21,6 @@ export function RegisterPage() {
     setSubmitting(true)
     try {
       await register(form.name, form.email, form.password)
-      navigate('/', { replace: true })
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)
