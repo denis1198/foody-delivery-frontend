@@ -3,6 +3,7 @@ import { AuthProvider } from './auth/AuthProvider'
 import { GuestOnly, RequireAuth } from './auth/RequireAuth'
 import { Layout } from './components/Layout'
 import { LoginPage } from './pages/LoginPage'
+import { OrdersPage } from './pages/OrdersPage'
 import { RegisterPage } from './pages/RegisterPage'
 
 export default function App() {
@@ -16,7 +17,7 @@ export default function App() {
           </Route>
           <Route element={<RequireAuth />}>
             <Route element={<Layout />}>
-              <Route path="/" element={<h1>Pedidos</h1>} />
+              <Route path="/" element={<OrdersPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

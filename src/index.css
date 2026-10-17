@@ -264,3 +264,135 @@ select:focus {
   padding: 4px 10px;
   font-size: 0.85rem;
 }
+
+/* Status */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-recebido {
+  background: #e7f0ff;
+  color: #1c4fbf;
+}
+
+.badge-em_preparo {
+  background: #fff4db;
+  color: #8a5a00;
+}
+
+.badge-saiu_para_entrega {
+  background: #f0e8ff;
+  color: #6230c4;
+}
+
+.badge-entregue {
+  background: #e3f7ea;
+  color: #1d7a3e;
+}
+
+.badge-cancelado {
+  background: #f1f2f4;
+  color: #6b7280;
+  text-decoration: line-through;
+}
+
+.status-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.status-actions .field-error {
+  width: 100%;
+  margin: 0;
+}
+
+/* Filtros */
+.filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.chip .count {
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+.chip-active {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+
+.chip-active .count {
+  color: #c9ccd3;
+}
+
+/* Cards de pedido */
+.order-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.order-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order-card p {
+  margin: 2px 0 0;
+}
+
+.order-card-header,
+.order-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-card-footer {
+  margin-top: auto;
+}
+
+.order-id {
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.order-id:hover {
+  color: var(--primary);
+}
+
+.item-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.card.center .btn {
+  margin-top: 8px;
+}
