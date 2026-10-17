@@ -67,10 +67,13 @@ export function MenuPage() {
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
             maxLength={80}
+            required
+            pattern=".*\S.*"
+            title="Digite o nome da categoria"
             aria-label="Nome da nova categoria"
           />
-          <button className="btn btn-ghost" disabled={!newCategory.trim()}>
-            <FolderPlus size={16} /> Adicionar
+          <button className="btn btn-primary">
+            <FolderPlus size={16} /> Adicionar categoria
           </button>
         </form>
       </div>
@@ -86,7 +89,9 @@ export function MenuPage() {
 
       {menu.categories.length === 0 && (
         <div className="card px-6 py-12 text-center text-ink-muted">
-          Comece criando uma categoria (por exemplo, “Pizzas” ou “Bebidas”) e depois adicione os produtos.
+          Seu cardápio está vazio. Digite o nome de uma categoria no campo <strong className="text-ink">Nova categoria</strong>{' '}
+          acima (por exemplo, “Lanches” ou “Bebidas”) e clique em <strong className="text-ink">Adicionar categoria</strong>.
+          Depois, use o botão <strong className="text-ink">+ Produto</strong> de cada categoria.
         </div>
       )}
 
