@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AuthProvider } from './auth/AuthProvider'
 import { GuestOnly, RequireRole } from './auth/RequireAuth'
@@ -9,15 +10,15 @@ import { RestaurantPage } from './pages/customer/RestaurantPage'
 import { RestaurantsPage } from './pages/customer/RestaurantsPage'
 import { MenuPage } from './pages/seller/MenuPage'
 import { SellerOrdersPage } from './pages/seller/SellerOrdersPage'
+import { SettingsPage } from './pages/seller/SettingsPage'
 import { CustomerLayout } from './layouts/CustomerLayout'
 import { SellerLayout } from './layouts/SellerLayout'
 import { LoginPage } from './pages/auth/LoginPage'
 import { RegisterPage } from './pages/auth/RegisterPage'
 import { ThemeProvider } from './theme/ThemeProvider'
 
-function Soon({ title }: { title: string }) {
-  return <h1 className="text-xl font-semibold text-ink">{title}</h1>
-}
+// Recharts só é baixado por quem abre a dashboard (vendedores).
+const DashboardPage = lazy(() => import('./pages/seller/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 
 export default function App() {
   return (
@@ -48,10 +49,17 @@ export default function App() {
 
             <Route path="/painel" element={<RequireRole role="SELLER" />}>
               <Route element={<SellerLayout />}>
-                <Route index element={<Soon title="Dashboard" />} />
+                <Route
+                  index
+                  element={
+                    <Suspense fallback={<p className="py-24 text-center text-sm text-ink-muted">Carregando dashboard…</p>}>
+                      <DashboardPage />
+                    </Suspense>
+                  }
+                />
                 <Route path="pedidos" element={<SellerOrdersPage />} />
                 <Route path="cardapio" element={<MenuPage />} />
-                <Route path="configuracoes" element={<Soon title="Configurações" />} />
+                <Route path="configuracoes" element={<SettingsPage />} />
               </Route>
             </Route>
 
