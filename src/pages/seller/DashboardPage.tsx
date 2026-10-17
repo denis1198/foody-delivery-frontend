@@ -46,17 +46,8 @@ import { useSellerRestaurant } from '../../layouts/sellerContext'
 import { useTheme } from '../../theme/useTheme'
 import { addDays, resolvePeriod, todayLocal, type DateRange, type PeriodPreset } from '../../utils/period'
 
-const PRESET_KEY = 'foody.dashboard.period'
 /** Ordem fixa das séries (e da legenda): faturamento → líquido → lucro. */
 const SERIES_ORDER = ['revenue', 'net', 'profit']
-
-function initialPreset(): PeriodPreset {
-  try {
-    return (localStorage.getItem(PRESET_KEY) as PeriodPreset | null) ?? '30'
-  } catch {
-    return '30'
-  }
-}
 
 export function DashboardPage() {
   const { restaurant } = useSellerRestaurant()
@@ -64,7 +55,7 @@ export function DashboardPage() {
   const colors = CHART_COLORS[theme]
   const tip = tooltipStyle(theme)
 
-  const [preset, setPreset] = useState<PeriodPreset>(initialPreset)
+  const [preset, setPreset] = useState<PeriodPreset>('today')
   const [custom, setCustom] = useState<DateRange>(() => ({ from: addDays(todayLocal(), -14), to: todayLocal() }))
   const [result, setResult] = useState<{ key: string; data: Dashboard | null; error: string | null } | null>(null)
   const [showMore, setShowMore] = useState(false)
@@ -76,6 +67,24 @@ export function DashboardPage() {
   const data = result?.data ?? null
   const error = result?.key === rangeKey ? result.error : null
   const loading = result?.key !== rangeKey
+
+  // Com um dia só, o gráfico de receitas teria um ponto: mostra os 7 dias até a data, como no Manager.
+  const singleDay = range.from === range.to
+  const trendKey = singleDay ? `${addDays(range.to, -6)}|${range.to}` : null
+  const [trend, setTrend] = useState<{ key: string; days: Dashboard['revenueByDay'] } | null>(null)
+  useEffect(() => {
+    if (!trendKey) return
+    let active = true
+    const [from, to] = trendKey.split('|')
+    sellerApi
+      .dashboard(from, to)
+      .then((d) => active && setTrend({ key: trendKey, days: d.revenueByDay }))
+      .catch(() => active && setTrend({ key: trendKey, days: [] }))
+    return () => {
+      active = false
+    }
+  }, [trendKey])
+  const revenueDays = singleDay ? (trend?.key === trendKey ? trend.days : []) : (data?.revenueByDay ?? [])
 
   useEffect(() => {
     if (!range.from || !range.to || range.from > range.to) return
@@ -97,16 +106,8 @@ export function DashboardPage() {
     }
   }, [range.from, range.to])
 
-  function changePreset(value: PeriodPreset) {
-    setPreset(value)
-    try {
-      localStorage.setItem(PRESET_KEY, value)
-    } catch {
-      // só não lembra o período
-    }
-  }
-
   const s = data?.summary
+  const compareLabel = data?.period.days === 1 ? 'vs. ontem' : 'vs. anterior'
   const p = data?.previous
   const fees = `comissão ${formatPercent(restaurant.commissionPercent)}, taxa de pagamento ${formatPercent(restaurant.paymentFeePercent)} (só online) e imposto ${formatPercent(restaurant.taxPercent)}`
 
@@ -127,8 +128,13 @@ export function DashboardPage() {
         <div>
           <h1 className="text-xl font-semibold text-ink">Dashboard</h1>
           <p className="text-sm text-ink-muted">Desempenho financeiro e operacional do {restaurant.name}</p>
+          {data?.period.comparedUntilNow && (
+            <p className="mt-0.5 text-xs text-ink-muted">
+              Período em andamento: as variações comparam com {data.period.days === 1 ? 'ontem' : 'o período anterior'} até este mesmo horário.
+            </p>
+          )}
         </div>
-        <PeriodFilter preset={preset} custom={custom} resolved={range} onPresetChange={changePreset} onCustomChange={setCustom} />
+        <PeriodFilter preset={preset} custom={custom} resolved={range} onPresetChange={setPreset} onCustomChange={setCustom} />
       </div>
 
       {error && <p className="mb-4 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
@@ -140,6 +146,7 @@ export function DashboardPage() {
           label="Faturamento"
           value={s ? formatMoney(s.revenue) : '—'}
           loading={loading}
+          compareLabel={compareLabel}
           delta={s && p ? percentDelta(s.revenue, p.revenue) : null}
           tooltip={
             <InfoTooltip
@@ -158,6 +165,7 @@ export function DashboardPage() {
           label="Líquido"
           value={s ? formatMoney(s.net) : '—'}
           loading={loading}
+          compareLabel={compareLabel}
           delta={s && p ? percentDelta(s.net, p.net) : null}
           tooltip={
             <InfoTooltip
@@ -174,6 +182,7 @@ export function DashboardPage() {
           label="Lucro Bruto"
           value={s ? formatMoney(s.profit) : '—'}
           loading={loading}
+          compareLabel={compareLabel}
           delta={s && p ? percentDelta(s.profit, p.profit) : null}
           tooltip={
             <InfoTooltip
@@ -190,6 +199,7 @@ export function DashboardPage() {
           label="Margem"
           value={s ? formatPercent(s.margin) : '—'}
           loading={loading}
+          compareLabel={compareLabel}
           delta={s && p && p.salesCount > 0 ? pointsDelta(s.margin, p.margin) : null}
           tooltip={<InfoTooltip align="right" description={`Lucro bruto dividido pelo faturamento. Usa ${fees}.`} />}
         />
@@ -201,6 +211,7 @@ export function DashboardPage() {
           label="Número de vendas"
           value={s ? formatNumber(s.salesCount) : '—'}
           loading={loading}
+          compareLabel={compareLabel}
           delta={s && p ? percentDelta(s.salesCount, p.salesCount) : null}
           tooltip={<InfoTooltip align="left" description="Pedidos não cancelados no período, incluindo os que ainda estão em andamento." />}
         />
@@ -209,6 +220,7 @@ export function DashboardPage() {
           label="Itens vendidos"
           value={s ? formatNumber(s.itemsSold) : '—'}
           loading={loading}
+          compareLabel={compareLabel}
           delta={s && p ? percentDelta(s.itemsSold, p.itemsSold) : null}
           tooltip={<InfoTooltip description="Soma das quantidades de todos os itens dos pedidos válidos." />}
         />
@@ -217,6 +229,7 @@ export function DashboardPage() {
           label="Ticket médio"
           value={s ? formatMoney(s.averageTicket) : '—'}
           loading={loading}
+          compareLabel={compareLabel}
           delta={s && p ? percentDelta(s.averageTicket, p.averageTicket) : null}
           tooltip={<InfoTooltip description="Faturamento dividido pelo número de vendas (por pedido, sem a taxa de entrega)." />}
         />
@@ -225,6 +238,7 @@ export function DashboardPage() {
           label="Cancelamentos"
           value={s ? `${formatNumber(s.cancelledCount)} · ${formatMoney(s.cancelledRevenue)}` : '—'}
           loading={loading}
+          compareLabel={compareLabel}
           delta={s && p ? percentDelta(s.cancelledCount, p.cancelledCount, false) : null}
           tooltip={
             <InfoTooltip
@@ -249,16 +263,22 @@ export function DashboardPage() {
         <div className="overflow-hidden">
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard icon={Receipt} label="Comissão paga à plataforma" value={s ? formatMoney(s.commission) : '—'} loading={loading}
+          compareLabel={compareLabel}
               tooltip={<InfoTooltip align="left" description={`${formatPercent(restaurant.commissionPercent)} sobre o faturamento de cada pedido.`} />} />
             <StatCard icon={Receipt} label="Taxas de pagamento" value={s ? formatMoney(s.paymentFees) : '—'} loading={loading}
+          compareLabel={compareLabel}
               tooltip={<InfoTooltip description={`${formatPercent(restaurant.paymentFeePercent)} sobre pedidos pagos online (Pix e cartão). Dinheiro não paga taxa.`} />} />
             <StatCard icon={Receipt} label="Impostos" value={s ? formatMoney(s.taxes) : '—'} loading={loading}
+          compareLabel={compareLabel}
               tooltip={<InfoTooltip align="right" description={`${formatPercent(restaurant.taxPercent)} sobre o faturamento.`} />} />
             <StatCard icon={Package} label="CMV (custo dos produtos)" value={s ? formatMoney(s.cost) : '—'} loading={loading}
+          compareLabel={compareLabel}
               tooltip={<InfoTooltip align="left" description="Soma do custo cadastrado de cada item vendido, no valor da época da venda." />} />
             <StatCard icon={Wallet} label="Taxas de entrega (repassadas)" value={s ? formatMoney(s.deliveryFees) : '—'} loading={loading}
+          compareLabel={compareLabel}
               tooltip={<InfoTooltip description="Cobradas do cliente e repassadas ao entregador; ficam fora do faturamento e do lucro." />} />
             <StatCard icon={TrendingUp} label="Retorno sobre o custo (ROI)" value={s ? formatPercent(s.roi) : '—'} loading={loading}
+          compareLabel={compareLabel}
               tooltip={<InfoTooltip align="right" description="Lucro bruto dividido pelo CMV: quanto cada real gasto em insumos devolveu de lucro." />} />
           </div>
         </div>
@@ -269,7 +289,7 @@ export function DashboardPage() {
         <div className="lg:col-span-2">
           <ChartCard
             title="Resumo de receitas"
-            subtitle="Faturamento, líquido e lucro bruto por dia"
+            subtitle={singleDay ? `Últimos 7 dias até ${formatDay(range.to)}` : 'Faturamento, líquido e lucro bruto por dia'}
             height={showTable ? 'max-h-72 overflow-auto' : 'h-72'}
             action={
               <button
@@ -283,10 +303,10 @@ export function DashboardPage() {
             }
           >
             {showTable ? (
-              <RevenueTable data={data} />
+              <RevenueTable days={revenueDays} />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data?.revenueByDay ?? []} margin={{ left: -8, right: 8, top: 4 }}>
+                <AreaChart data={revenueDays} margin={{ left: -8, right: 8, top: 4 }}>
                   <defs>
                     {colors.series.map((c, i) => (
                       <linearGradient key={c} id={`area-${i}`} x1="0" y1="0" x2="0" y2="1">
@@ -365,6 +385,11 @@ export function DashboardPage() {
         </ChartCard>
 
         <ChartCard title="Desempenho por dia da semana" subtitle="Média de pedidos por dia (dias completos)">
+          {data && data.period.days < 2 ? (
+            <p className="flex h-full items-center justify-center px-6 text-center text-sm text-ink-muted">
+              Escolha um período com mais de um dia para comparar os dias da semana.
+            </p>
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data?.weekdays ?? []} margin={{ left: -20, right: 4, top: 18 }} barCategoryGap="22%">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={colors.grid} />
@@ -387,6 +412,7 @@ export function DashboardPage() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          )}
         </ChartCard>
       </div>
 
@@ -454,8 +480,7 @@ export function DashboardPage() {
   )
 }
 
-function RevenueTable({ data }: { data: Dashboard | null }) {
-  if (!data) return null
+function RevenueTable({ days }: { days: Dashboard['revenueByDay'] }) {
   return (
     <table className="w-full text-sm">
       <thead className="sticky top-0 bg-surface text-xs text-ink-muted">
@@ -468,7 +493,7 @@ function RevenueTable({ data }: { data: Dashboard | null }) {
         </tr>
       </thead>
       <tbody className="divide-y divide-border">
-        {[...data.revenueByDay].reverse().map((d) => (
+        {[...days].reverse().map((d) => (
           <tr key={d.day} className="text-ink">
             <td className="py-1.5 capitalize">{formatDay(d.day)}</td>
             <td className="py-1.5 text-right">{d.orders}</td>
@@ -500,7 +525,7 @@ function buildInsights(d: Dashboard) {
   const hours = d.ordersByHour.filter((h) => h.orders > 0)
   const totalOrders = hours.reduce((sum, h) => sum + h.orders, 0)
   let peak: string | null = null
-  if (totalOrders > 0) {
+  if (totalOrders >= 10) {
     const top = [...hours].sort((a, b) => b.orders - a.orders)[0]
     const lunch = hours.filter((h) => h.hour >= 11 && h.hour <= 14).reduce((s, h) => s + h.orders, 0)
     const dinner = hours.filter((h) => h.hour >= 18 && h.hour <= 22).reduce((s, h) => s + h.orders, 0)

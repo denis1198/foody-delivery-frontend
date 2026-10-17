@@ -194,7 +194,7 @@ export interface DayPoint {
 }
 
 export interface Dashboard {
-  period: { from: string; to: string; days: number }
+  period: { from: string; to: string; days: number; comparedUntilNow: boolean }
   summary: DashboardSummary
   previous: DashboardSummary
   revenueByDay: DayPoint[]

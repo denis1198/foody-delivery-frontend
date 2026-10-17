@@ -10,6 +10,7 @@ export function StatCard({
   tooltip,
   delta,
   loading,
+  compareLabel = 'vs. período anterior',
 }: {
   icon: LucideIcon
   label: string
@@ -17,6 +18,7 @@ export function StatCard({
   tooltip?: ReactNode
   delta?: Delta | null
   loading?: boolean
+  compareLabel?: string
 }) {
   const DeltaIcon = delta?.direction === 'up' ? ArrowUpRight : delta?.direction === 'down' ? ArrowDownRight : Minus
   const tone =
@@ -34,10 +36,10 @@ export function StatCard({
         </div>
         <p className="truncate text-xl font-semibold text-ink">{loading ? '…' : value}</p>
         {delta && !loading && (
-          <p className={`flex items-center gap-0.5 text-xs font-medium ${tone}`} title="Comparado ao período anterior de mesmo tamanho">
+          <p className={`flex items-center gap-0.5 text-xs font-medium ${tone}`}>
             <DeltaIcon size={13} />
             {delta.label}
-            <span className="ml-1 font-normal text-ink-muted">vs. anterior</span>
+            <span className="ml-1 truncate font-normal text-ink-muted">{compareLabel}</span>
           </p>
         )}
       </div>
