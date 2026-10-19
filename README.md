@@ -46,6 +46,8 @@ abrir/fechar a loja.
   "Como calculamos"; resumo de receitas (com visão em tabela), picos de movimentação por hora, desempenho por dia
   da semana, dias mais fracos com leitura automática, top 15 produtos com lucro/margem e pedidos por status.
 - **Pedidos**: quadro por status atualizado a cada 10s, com destaque para pedidos novos e alerta de espera.
+  Com outro período no filtro de datas, vira o histórico da loja: todos os pedidos do intervalo, com contagem e
+  filtro por status e paginação.
 - **Cardápio**: categorias e produtos, disponibilidade em um clique e **simulação de margem ao vivo**
   (comissão, taxa de pagamento, imposto e custo) com alerta de margem baixa.
 - **Configurações**: perfil, entrega e percentuais usados nas métricas.

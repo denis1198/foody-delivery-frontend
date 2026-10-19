@@ -1,3 +1,4 @@
+import type { DateRange } from '../utils/period'
 import { api } from './client'
 import type {
   Dashboard,
@@ -32,7 +33,9 @@ export const sellerApi = {
     api<SellerProduct>(`/api/seller/menu/products/${id}/availability`, { method: 'PATCH', body: { available } }),
   archiveProduct: (id: number) => api<void>(`/api/seller/menu/products/${id}`, { method: 'DELETE' }),
 
-  orders: () => api<Order[]>('/api/seller/orders'),
+  /** Sem período: quadro (em andamento + criados hoje). Com período: todos os pedidos criados nele. */
+  orders: (range?: DateRange) =>
+    api<Order[]>(range ? `/api/seller/orders?from=${range.from}&to=${range.to}` : '/api/seller/orders'),
   order: (id: number) => api<Order>(`/api/seller/orders/${id}`),
   updateStatus: (id: number, status: OrderStatus) =>
     api<Order>(`/api/seller/orders/${id}/status`, { method: 'PATCH', body: { status } }),

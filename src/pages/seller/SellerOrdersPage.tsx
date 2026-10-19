@@ -1,10 +1,21 @@
-import { Bell, Clock, MapPin, RefreshCw } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Bell, ChevronLeft, ChevronRight, Clock, MapPin, RefreshCw } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError } from '../../api/client'
 import { sellerApi } from '../../api/seller'
 import type { Order, OrderStatus } from '../../api/types'
+import { PeriodFilter } from '../../components/dashboard/PeriodFilter'
 import { StatusBadge } from '../../components/StatusBadge'
-import { formatMoney, formatTime, minutesSince, PAYMENT_LABELS, STATUS_ACTIONS } from '../../format'
+import {
+  formatDateTime,
+  formatMoney,
+  formatNumber,
+  formatTime,
+  minutesSince,
+  PAYMENT_LABELS,
+  STATUS_ACTIONS,
+  STATUS_LABELS,
+} from '../../format'
+import { addDays, resolvePeriod, todayLocal, type DateRange, type PeriodPreset } from '../../utils/period'
 
 const REFRESH_MS = 10_000
 
@@ -15,7 +26,39 @@ const COLUMNS: { title: string; statuses: OrderStatus[]; tone: string }[] = [
   { title: 'Concluídos hoje', statuses: ['ENTREGUE', 'CANCELADO'], tone: 'bg-success' },
 ]
 
+const HISTORY_PAGE_SIZE = 50
+const STATUS_ORDER: OrderStatus[] = ['RECEBIDO', 'EM_PREPARO', 'SAIU_PARA_ENTREGA', 'ENTREGUE', 'CANCELADO']
+
+/**
+ * "Hoje" é o quadro operacional, ao vivo (inclui pedidos de dias anteriores ainda em andamento).
+ * Qualquer outro período vira o histórico: todos os pedidos criados no intervalo, em qualquer status.
+ */
 export function SellerOrdersPage() {
+  const [preset, setPreset] = useState<PeriodPreset>('today')
+  const [custom, setCustom] = useState<DateRange>(() => ({ from: addDays(todayLocal(), -6), to: todayLocal() }))
+  const range = useMemo(() => resolvePeriod(preset, custom), [preset, custom])
+  const live = preset === 'today'
+
+  return (
+    <>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-ink">Pedidos</h1>
+          <p className="text-sm text-ink-muted">
+            {live
+              ? 'Em andamento e concluídos hoje · atualiza a cada 10 segundos'
+              : 'Todos os pedidos criados no período, em qualquer status'}
+          </p>
+        </div>
+        <PeriodFilter preset={preset} custom={custom} resolved={range} onPresetChange={setPreset} onCustomChange={setCustom} />
+      </div>
+
+      {live ? <OrderBoard /> : <OrderHistory key={`${range.from}|${range.to}`} range={range} />}
+    </>
+  )
+}
+
+function OrderBoard() {
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [fresh, setFresh] = useState<Set<number>>(new Set())
@@ -75,21 +118,15 @@ export function SellerOrdersPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">Pedidos</h1>
-          <p className="text-sm text-ink-muted">Em andamento e concluídos hoje · atualiza a cada 10 segundos</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {newCount > 0 && (
-            <span className="flex items-center gap-1.5 rounded-full bg-info-soft px-3 py-1 text-sm font-semibold text-info">
-              <Bell size={14} /> {newCount} {newCount === 1 ? 'novo pedido' : 'novos pedidos'}
-            </span>
-          )}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRefreshKey((k) => k + 1)}>
-            <RefreshCw size={14} /> Atualizar
-          </button>
-        </div>
+      <div className="mb-4 flex items-center justify-end gap-2">
+        {newCount > 0 && (
+          <span className="flex items-center gap-1.5 rounded-full bg-info-soft px-3 py-1 text-sm font-semibold text-info">
+            <Bell size={14} /> {newCount} {newCount === 1 ? 'novo pedido' : 'novos pedidos'}
+          </span>
+        )}
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRefreshKey((k) => k + 1)}>
+          <RefreshCw size={14} /> Atualizar
+        </button>
       </div>
 
       {error && <p className="mb-4 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
@@ -121,6 +158,152 @@ export function SellerOrdersPage() {
     </>
   )
 }
+
+function OrderHistory({ range }: { range: DateRange }) {
+  const [orders, setOrders] = useState<Order[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<OrderStatus | 'ALL'>('ALL')
+  const [page, setPage] = useState(0)
+  const [reloadKey, setReloadKey] = useState(0)
+  const { from, to } = range
+  const complete = Boolean(from && to)
+
+  // A página remonta este componente a cada período (key), então o estado já começa limpo aqui.
+  useEffect(() => {
+    if (!complete) return
+    let active = true
+    sellerApi
+      .orders({ from, to })
+      .then((data) => {
+        if (!active) return
+        setOrders(data)
+        setError(null)
+      })
+      .catch((err) => active && setError(err instanceof ApiError ? err.message : 'Erro ao carregar pedidos.'))
+    return () => {
+      active = false
+    }
+  }, [from, to, complete, reloadKey])
+
+  const counts = useMemo(() => {
+    const byStatus = Object.fromEntries(STATUS_ORDER.map((s) => [s, 0])) as Record<OrderStatus, number>
+    orders?.forEach((o) => byStatus[o.status]++)
+    return byStatus
+  }, [orders])
+
+  const filtered = useMemo(
+    () => (orders ?? []).filter((o) => status === 'ALL' || o.status === status),
+    [orders, status],
+  )
+  const pages = Math.max(1, Math.ceil(filtered.length / HISTORY_PAGE_SIZE))
+  const visible = filtered.slice(page * HISTORY_PAGE_SIZE, (page + 1) * HISTORY_PAGE_SIZE)
+
+  function selectStatus(next: OrderStatus | 'ALL') {
+    setStatus(next)
+    setPage(0)
+  }
+
+  if (!complete) return <p className="py-12 text-center text-sm text-ink-muted">Escolha as duas datas do período.</p>
+  if (error) return <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>
+  if (orders === null) return <p className="py-12 text-center text-sm text-ink-muted">Carregando pedidos…</p>
+
+  const chip = (value: OrderStatus | 'ALL', label: string, count: number) => (
+    <button
+      key={value}
+      type="button"
+      onClick={() => selectStatus(value)}
+      className={`rounded-full border px-3 py-1 text-sm font-medium ${
+        status === value ? 'border-accent bg-accent text-white' : 'border-border bg-surface text-ink hover:border-accent'
+      }`}
+    >
+      {label} <span className={status === value ? 'text-white/80' : 'text-ink-muted'}>{formatNumber(count)}</span>
+    </button>
+  )
+
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {chip('ALL', 'Todos', orders.length)}
+        {STATUS_ORDER.map((s) => chip(s, STATUS_LABELS[s], counts[s]))}
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm ml-auto"
+          onClick={() => {
+            setOrders(null)
+            setReloadKey((k) => k + 1)
+          }}
+        >
+          <RefreshCw size={14} /> Atualizar
+        </button>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="card py-12 text-center text-sm text-ink-muted">Nenhum pedido no período.</p>
+      ) : (
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs text-ink-muted">
+              <tr className="border-b border-border">
+                <th className="px-3 py-2 text-left font-medium">Pedido</th>
+                <th className="px-3 py-2 text-left font-medium">Data</th>
+                <th className="px-3 py-2 text-left font-medium">Cliente</th>
+                <th className="px-3 py-2 text-left font-medium">Itens</th>
+                <th className="px-3 py-2 text-left font-medium">Pagamento</th>
+                <th className="px-3 py-2 text-left font-medium">Status</th>
+                <th className="px-3 py-2 text-right font-medium">Valor</th>
+                <th className="px-3 py-2 text-right font-medium">Lucro</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((order) => (
+                <tr key={order.id} className="border-b border-border last:border-0">
+                  <td className="px-3 py-2 font-semibold whitespace-nowrap text-ink">#{order.id}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-ink-muted">{formatDateTime(order.createdAt)}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-ink">{order.customerName}</td>
+                  <td className="max-w-64 truncate px-3 py-2 text-ink" title={itemsSummary(order)}>
+                    {itemsSummary(order)}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-ink-muted">{PAYMENT_LABELS[order.paymentMethod]}</td>
+                  <td className="px-3 py-2">
+                    <StatusBadge status={order.status} />
+                  </td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap text-ink">{formatMoney(order.subtotal)}</td>
+                  <td className="px-3 py-2 text-right font-semibold whitespace-nowrap text-success">
+                    {order.financials ? formatMoney(order.financials.profit) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {filtered.length > HISTORY_PAGE_SIZE && (
+        <div className="mt-3 flex items-center justify-between gap-2 text-sm text-ink-muted">
+          <span>
+            {formatNumber(page * HISTORY_PAGE_SIZE + 1)}–{formatNumber(page * HISTORY_PAGE_SIZE + visible.length)} de{' '}
+            {formatNumber(filtered.length)}
+          </span>
+          <div className="flex gap-2">
+            <button type="button" className="btn btn-ghost btn-sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+              <ChevronLeft size={14} /> Anterior
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              disabled={page >= pages - 1}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Próxima <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+const itemsSummary = (order: Order) => order.items.map((i) => `${i.quantity}× ${i.productName}`).join(', ')
 
 function OrderCard({ order, isNew, onUpdated }: { order: Order; isNew: boolean; onUpdated: (o: Order) => void }) {
   const [pending, setPending] = useState<OrderStatus | null>(null)
